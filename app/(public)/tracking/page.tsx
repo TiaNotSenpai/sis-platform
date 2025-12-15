@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react"; // <--- Aggiunto Suspense
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Search, Loader2, AlertTriangle, CheckCircle, Clock } from "lucide-react";
 
 type Segnalazione = {
@@ -16,12 +16,14 @@ type Segnalazione = {
   description: string;
 };
 
-export default function TrackingPage() {
+// 1. SPOSTIAMO TUTTA LA LOGICA IN UN SOTTO-COMPONENTE
+function TrackingContent() {
   const [ticketId, setTicketId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Segnalazione | null>(null);
-  const searchParams = useSearchParams();
+  
+  const searchParams = useSearchParams(); // <--- Questo è il colpevole che richiede Suspense
 
   useEffect(() => {
     const idFromUrl = searchParams.get('id');
@@ -103,5 +105,15 @@ export default function TrackingPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// 2. QUESTO È IL COMPONENTE PRINCIPALE CHE ESPORTIAMO
+// Avvolge tutto in un <Suspense>, così Next.js è felice durante la build.
+export default function TrackingPage() {
+  return (
+    <Suspense fallback={<div className="text-center py-20 text-zinc-500">Caricamento sistema tracking...</div>}>
+      <TrackingContent />
+    </Suspense>
   );
 }
