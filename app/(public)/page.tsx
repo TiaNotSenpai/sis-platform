@@ -12,7 +12,7 @@ export default function HomePage() {
       <section className="py-12 md:py-24 text-center space-y-6 relative">
         {/* Badge "Beta" */}
         <div className="inline-block rounded-full bg-primary/20 px-3 py-1 text-xs text-primary font-bold border border-primary/30 mb-2">
-          SIS.MEMETICA — BETA 0.1
+          SIS.MEMETICA — BETA 0.15
         </div>
 
         <h1 className="text-4xl md:text-7xl font-extrabold tracking-tighter text-white glow-text leading-tight">
