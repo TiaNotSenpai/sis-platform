@@ -8,25 +8,14 @@ const UNIMIA_URL = 'https://www.unimi.it/it';
 
 export async function GET() {
   const start = performance.now();
-  console.log("--- START PING CHECK ---");
+  console.log("--- START PING CHECK (HARDCODED) ---");
 
-  // 1. RECUPERO VARIABILI
-  const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  let supabase = null;
-
-  // 2. CONTROLLO DI SICUREZZA
-  // Se le chiavi ci sono, attivo Supabase. Se mancano, loggo l'errore MA NON CRASHO.
-  if (sbUrl && sbKey) {
-    try {
-      supabase = createClient(sbUrl, sbKey);
-    } catch (e) {
-      console.error("Errore inizializzazione Supabase:", e);
-    }
-  } else {
-    console.error("ATTENZIONE: Variabili Supabase mancanti su Vercel!");
-  }
+  // ⚠️ INCOLLA QUI LE STESSE CHIAVI REALI ⚠️
+  // Così siamo sicuri al 100% che il server abbia accesso al DB
+  const supabase = createClient(
+    'https://TUO-PROGETTO.supabase.co',
+    'eyJh...TUA-CHIAVE-LUNGHISSIMA...'
+  );
 
   let status = 'down';
   let code = 0;
@@ -45,7 +34,7 @@ export async function GET() {
     
     code = response.status;
     if (response.ok || (code >= 300 && code < 400)) status = 'operational';
-    else if (code === 403) status = 'degraded'; // Firewall block
+    else if (code === 403) status = 'degraded';
     else if (code >= 500) status = 'degraded';
 
   } catch (error) {
@@ -56,13 +45,14 @@ export async function GET() {
   const end = performance.now();
   const latency = Math.round(end - start);
 
-  // 3. SALVATAGGIO (SOLO SE SUPABASE ESISTE)
+  // LOGICA DB
   let lastDownDate = null;
-
-  if (supabase) {
-    try {
+  
+  try {
+      // Scrittura
       await supabase.from('uptime_logs').insert([{ status, latency }]);
       
+      // Lettura Ultimo Down
       const { data } = await supabase
         .from('uptime_logs')
         .select('created_at')
@@ -70,15 +60,15 @@ export async function GET() {
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
-        
-      lastDownDate = data?.created_at || null;
       
-      // Pulizia background
+      lastDownDate = data?.created_at || null;
+
+      // Pulizia
       const hours48Ago = new Date(Date.now() - (48 * 60 * 60 * 1000)).toISOString();
       await supabase.from('uptime_logs').delete().lt('created_at', hours48Ago).neq('status', 'down');
-    } catch (dbError) {
-      console.error("Errore DB:", dbError);
-    }
+      
+  } catch (err) {
+      console.error("Errore DB Critical:", err);
   }
 
   return NextResponse.json({ 
