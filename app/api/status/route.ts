@@ -5,12 +5,17 @@ export const revalidate = 0;
 
 const UNIMIA_URL = 'https://www.unimi.it/it'; 
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+// ❌ NON CREARE IL CLIENT QUI FUORI
+// const supabase = createClient(...) <--- CANCELLA O COMMENTA QUESTO
 
 export async function GET() {
+  // ✅ CREALO QUI DENTRO.
+  // Così se le variabili mancano durante la build, non esplode tutto subito.
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
   const start = performance.now();
   let status = 'down';
   let code = 0;
@@ -34,30 +39,19 @@ export async function GET() {
   const end = performance.now();
   const latency = Math.round(end - start);
 
-  // 1. INSERIAMO IL NUOVO LOG
-  await supabase.from('uptime_logs').insert([{ status, latency }]);
+  // Il resto è uguale...
+  supabase.from('uptime_logs').insert([{ status, latency }]).then();
 
-  // 2. PULIZIA AUTOMATICA (GARBAGE COLLECTION)
-  // Calcoliamo le date limite
+  // ... (tutto il resto del codice di pulizia e select rimane uguale) ...
+  
+  // (Ricopia il resto delle logiche di pulizia qui sotto, usando la variabile 'supabase' locale)
   const now = new Date();
   const hours48Ago = new Date(now.getTime() - (48 * 60 * 60 * 1000)).toISOString();
   const days30Ago = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000)).toISOString();
 
-  // Cancelliamo i log normali più vecchi di 48 ore
-  supabase.from('uptime_logs')
-    .delete()
-    .lt('created_at', hours48Ago)
-    .neq('status', 'down') // Non cancellare i down!
-    .then(); // .then() senza await fa andare il processo in background senza rallentare l'utente
+  supabase.from('uptime_logs').delete().lt('created_at', hours48Ago).neq('status', 'down').then();
+  supabase.from('uptime_logs').delete().lt('created_at', days30Ago).eq('status', 'down').then();
 
-  // Cancelliamo i down più vecchi di 30 giorni
-  supabase.from('uptime_logs')
-    .delete()
-    .lt('created_at', days30Ago)
-    .eq('status', 'down')
-    .then();
-
-  // 3. RECUPERO DATI PER FRONTEND
   const { data: lastDownData } = await supabase
     .from('uptime_logs')
     .select('created_at')
